@@ -10,3 +10,17 @@ python -m uvicorn main:app --reload --port 8000
 ```
 
 Then open the API root at <http://localhost:8000/> or the interactive Swagger UI at <http://localhost:8000/docs>.
+
+## Endpoints
+
+| Method | Path | Description | Success | Errors |
+| --- | --- | --- | --- | --- |
+| GET | `/` | API info | 200 | - |
+| GET | `/health` | Health check | 200 | - |
+| GET | `/tasks` | List tasks (`?done=`, `?search=`) | 200 | - |
+| GET | `/tasks/{task_id}` | Get one task | 200 | 404 |
+| POST | `/tasks` | Create a task | 201 | 400 |
+| PUT | `/tasks/{task_id}` | Update a task | 200 | 400, 404 |
+| DELETE | `/tasks/{task_id}` | Delete a task | 204 | 404 |
+| GET | `/stats` | Task counts (extra) | 200 | - |
+| POST | `/reset` | Restore the seed tasks (extra) | 200 | - |
