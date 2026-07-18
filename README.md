@@ -24,3 +24,23 @@ Then open the API root at <http://localhost:8000/> or the interactive Swagger UI
 | DELETE | `/tasks/{task_id}` | Delete a task | 204 | 404 |
 | GET | `/stats` | Task counts (extra) | 200 | - |
 | POST | `/reset` | Restore the seed tasks (extra) | 200 | - |
+
+## Example
+
+```bash
+curl -i -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Created with curl","done":false}'
+```
+
+Full response captured during the curl test pass:
+
+```http
+HTTP/1.1 201 Created
+date: Sat, 18 Jul 2026 06:43:45 GMT
+server: uvicorn
+content-length: 49
+content-type: application/json
+
+{"id":4,"title":"Created with curl","done":false}
+```
