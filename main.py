@@ -1,8 +1,9 @@
 import sqlite3
 from contextlib import closing
 
-from fastapi import FastAPI, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 
 app = FastAPI(
@@ -15,18 +16,34 @@ DATABASE_NAME = "tasks.db"
 
 
 class TaskCreate(BaseModel):
-    title: str = Field(..., min_length=1)
+    # No min_length here on purpose — Pydantic would reject an empty/missing
+    # title with a 422 before our code ever runs. We validate manually below
+    # so empty titles correctly return the 400 the assignment requires.
+    title: str = ""
 
 
 class TaskUpdate(BaseModel):
-    title: str = Field(..., min_length=1)
-    done: bool
+    title: str = ""
+    done: bool = False
 
 
 class TaskResponse(BaseModel):
     id: int
     title: str
     done: bool
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Make every HTTPException come back as {"error": "..."} instead of
+    FastAPI's default {"detail": "..."}, matching the assignment spec.
+    """
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail},
+    )
 
 
 def get_database_connection() -> sqlite3.Connection:

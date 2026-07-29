@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
+.venv/
 tasks.db
-main_backup.py
+*.sqbpro
