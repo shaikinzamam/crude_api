@@ -1,45 +1,34 @@
-FastAPI SQLite Task CRUD API
+# FastAPI SQLite Task CRUD API
 
 A persistent task-management CRUD API built with Python, FastAPI, and SQLite.
 
 This project upgrades the original in-memory CRUD API by storing tasks in a real SQLite database. The API endpoints remain the same, but tasks now survive server restarts.
 
-Features
+## Features
 
-Create, read, update, and delete tasks
+- Create, read, update, and delete tasks
+- SQLite database persistence
+- Automatic database and table creation
+- Three example tasks inserted only when the database is empty
+- Request validation with 400 Bad Request
+- 404 Not Found for unknown task IDs
+- Interactive API documentation with Swagger UI
+- Automated tests using pytest
+- Parameterized SQL queries
 
-SQLite database persistence
-
-Automatic database and table creation
-
-Three example tasks inserted only when the database is empty
-
-Request validation with 400 Bad Request
-
-404 Not Found for unknown task IDs
-
-Interactive API documentation with Swagger UI
-
-Automated tests using pytest
-
-Parameterized SQL queries
-
-Why SQLite?
+## Why SQLite?
 
 SQLite was chosen because:
 
-It requires no separate database server.
+- It requires no separate database server.
+- It stores the complete database in a single file.
+- Python includes SQLite support through the built-in `sqlite3` library.
+- It is simple to configure and suitable for small applications.
+- Data remains available after the FastAPI server restarts.
 
-It stores the complete database in a single file.
+## Project Structure
 
-Python includes SQLite support through the built-in sqlite3 library.
-
-It is simple to configure and suitable for small applications.
-
-Data remains available after the FastAPI server restarts.
-
-Project Structure
-
+```
 crude_api/
 ├── screenshots/
 │   └── database-view.png
@@ -49,149 +38,104 @@ crude_api/
 ├── main.py
 ├── README.md
 └── requirements.txt
+```
 
-The tasks.db file is created automatically when the application starts. It is excluded from Git so every cloned project can create a fresh local database.
+The `tasks.db` file is created automatically when the application starts. It is excluded from Git so every cloned project can create a fresh local database.
 
-Database Schema
+## Database Schema
 
-The application creates a table named tasks:
+The application creates a table named `tasks`:
 
+```sql
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     done INTEGER NOT NULL DEFAULT 0
 );
+```
 
-Column
+| Column | Type            | Description                        |
+|--------|-----------------|-------------------------------------|
+| id     | Integer         | Unique task identifier              |
+| title  | Text            | Task title                          |
+| done   | Boolean/Integer | 0 for incomplete and 1 for completed|
 
-Type
+## Installation
 
-Description
+1. **Clone the repository**
 
-id
-
-Integer
-
-Unique task identifier
-
-title
-
-Text
-
-Task title
-
-done
-
-Boolean/Integer
-
-0 for incomplete and 1 for completed
-
-Installation
-
-1. Clone the repository
-
+```bash
 git clone https://github.com/shaikinzamam/crude_api.git
 cd crude_api
+```
 
-2. Create a virtual environment
+2. **Create a virtual environment**
 
+```bash
 python -m venv .venv
+```
 
 Activate it on Windows PowerShell:
 
+```powershell
 .\.venv\Scripts\Activate.ps1
+```
 
-3. Install dependencies
+3. **Install dependencies**
 
+```bash
 pip install -r requirements.txt
+```
 
-Run the Application
+## Run the Application
 
+```bash
 python -m uvicorn main:app --reload --port 8000
+```
 
 Open Swagger UI:
 
+```
 http://127.0.0.1:8000/docs
+```
 
-API Endpoints
+## API Endpoints
 
-Method
+| Method | Endpoint          | Description        | Success code |
+|--------|-------------------|---------------------|---------------|
+| GET    | /                 | API information     | 200           |
+| GET    | /tasks            | Return all tasks    | 200           |
+| GET    | /tasks/{task_id}  | Return one task     | 200           |
+| POST   | /tasks            | Create a new task   | 201           |
+| PUT    | /tasks/{task_id}  | Update a task       | 200           |
+| DELETE | /tasks/{task_id}  | Delete a task       | 204           |
 
-Endpoint
+## Example Requests
 
-Description
+### Create a task
 
-Success code
-
-GET
-
-/
-
-API information
-
-200
-
-GET
-
-/tasks
-
-Return all tasks
-
-200
-
-GET
-
-/tasks/{task_id}
-
-Return one task
-
-200
-
-POST
-
-/tasks
-
-Create a new task
-
-201
-
-PUT
-
-/tasks/{task_id}
-
-Update a task
-
-200
-
-DELETE
-
-/tasks/{task_id}
-
-Delete a task
-
-204
-
-Example Requests
-
-Create a task
-
+```
 POST /tasks
 Content-Type: application/json
 
 {
   "title": "Learn SQLite"
 }
+```
 
 Example response:
 
+```json
 {
   "id": 4,
   "title": "Learn SQLite",
   "done": false
 }
+```
 
-Update a task
+### Update a task
 
+```
 PUT /tasks/4
 Content-Type: application/json
 
@@ -199,97 +143,108 @@ Content-Type: application/json
   "title": "Complete SQLite assignment",
   "done": true
 }
+```
 
-Delete a task
+### Delete a task
 
+```
 DELETE /tasks/4
+```
 
-A successful deletion returns 204 No Content.
+A successful deletion returns `204 No Content`.
 
-Error Responses
+## Error Responses
 
-Invalid request:
+**Invalid request:**
 
+```json
 {
   "error": "Title is required"
 }
+```
 
-Unknown task ID:
+**Unknown task ID:**
 
+```json
 {
   "error": "Task not found"
 }
+```
 
-SQL Queries Explored
+## SQL Queries Explored
 
 List every task:
 
+```sql
 SELECT * FROM tasks;
+```
 
 Show only completed tasks:
 
+```sql
 SELECT * FROM tasks WHERE done = 1;
+```
 
 Count all tasks:
 
+```sql
 SELECT COUNT(*) FROM tasks;
+```
 
 Update all tasks as completed:
 
+```sql
 UPDATE tasks SET done = 1;
+```
 
 Delete all completed tasks:
 
+```sql
 DELETE FROM tasks WHERE done = 1;
+```
 
-Database Screenshot
+## Database Screenshot
 
+See `screenshots/database-view.png`.
 
+## Persistence Test
 
-Persistence Test
+1. Create a new task using `POST /tasks`.
+2. Stop the FastAPI server.
+3. Start the server again.
+4. Run `GET /tasks`.
 
-Create a new task using POST /tasks.
+The task remains available because it is stored in `tasks.db` instead of an in-memory Python list.
 
-Stop the FastAPI server.
+## Run Tests
 
-Start the server again.
-
-Run GET /tasks.
-
-The task remains available because it is stored in tasks.db instead of an in-memory Python list.
-
-Run Tests
-
+```bash
 python -m pytest
+```
 
 Expected result:
 
+```
 4 passed
+```
 
-Technologies Used
+## Technologies Used
 
-Python
+- Python
+- FastAPI
+- SQLite
+- Uvicorn
+- Pydantic
+- Pytest
+- DB Browser for SQLite
 
-FastAPI
-
-SQLite
-
-Uvicorn
-
-Pydantic
-
-Pytest
-
-DB Browser for SQLite
-
-Assignment Outcome
+## Assignment Outcome
 
 The API contract stayed the same while the storage layer changed from an in-memory list to SQLite. This demonstrates an important backend-development principle:
 
-The API describes what the application does, while the database determines where the application stores its data.
+> The API describes what the application does, while the database determines where the application stores its data.
 
-Author
+## Author
 
-Shaik Inzamam
-
-GitHub: shaikinzamam
+**Shaik Inzamam**
+GitHub: [shaikinzamam](https://github.com/shaikinzamam)
