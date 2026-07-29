@@ -1,62 +1,22 @@
-# Task API
+# FastAPI SQLite Task API
 
-A small in-memory to-do list CRUD API built with Python and FastAPI.
+A persistent to-do list CRUD API built with Python, FastAPI, and SQLite.
 
-## Run it
+This project upgrades the original in-memory CRUD API by storing tasks in a real SQLite database. The API endpoints remain the same, but tasks now survive server restarts.
 
-```bash
-python -m pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
-```
+## Why SQLite?
 
-Then open the API root at <http://localhost:8000/> or the interactive Swagger UI at <http://localhost:8000/docs>.
+SQLite was chosen because:
 
-## Endpoints
+- It requires no separate database server.
+- It stores data in a single file.
+- Python includes SQLite support through the built-in `sqlite3` library.
+- It is simple to set up and suitable for small applications.
+- Data remains available after the server restarts.
 
-| Method | Path | Description | Success | Errors |
-| --- | --- | --- | --- | --- |
-| GET | `/` | API info (lists all endpoints) | 200 | - |
-| GET | `/health` | Health check | 200 | - |
-| GET | `/tasks` | List tasks (`?done=`, `?search=`) | 200 | - |
-| GET | `/tasks/{task_id}` | Get one task | 200 | 404 |
-| POST | `/tasks` | Create a task | 201 | 400 |
-| PUT | `/tasks/{task_id}` | Update a task | 200 | 400, 404 |
-| DELETE | `/tasks/{task_id}` | Delete a task | 204 | 404 |
-| GET | `/stats` | Task counts (extra) | 200 | - |
-| POST | `/reset` | Restore the seed tasks (extra) | 200 | - |
+## Database
 
-## Example
+The application automatically creates:
 
-```bash
-curl -i -X POST http://localhost:8000/tasks \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Created with curl","done":false}'
-```
-
-Full response captured during the curl test pass:
-
-```http
-HTTP/1.1 201 Created
-date: Sat, 18 Jul 2026 06:43:45 GMT
-server: uvicorn
-content-length: 49
-content-type: application/json
-
-{"id":4,"title":"Created with curl","done":false}
-```
-
-## Swagger UI
-
-Full CRUD cycle tested via `/docs` → **Try it out** → **Execute**, with real responses:
-
-**PUT /tasks/1** — updates the task, returns `200` with the updated body:
-
-![PUT /tasks/{task_id}](swagger-put.png)
-
-**DELETE /tasks/1** — removes the task, returns `204` with an empty body:
-
-![DELETE /tasks/{task_id}](swagger-delete.png)
-
-## The mortality experiment
-
-After creating a few extra tasks and restarting the server (`Ctrl+C` then `uvicorn` again), `GET /tasks` came back with only the original 3 seed tasks — every task I'd added was gone. This happens because the task list lives only in a Python variable in memory: as soon as the process stops, that memory is freed and nothing is left to reload it from. This is exactly why real APIs use a database — it writes data to disk so it survives a restart, which is what Week 3 introduces.
+```text
+tasks.db
