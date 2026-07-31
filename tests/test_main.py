@@ -1,104 +1,164 @@
-import sqlite3
-import pytest
+from unittest.mock import MagicMock
+
 from fastapi.testclient import TestClient
 
-from main import app, DATABASE_NAME
-
-client = TestClient(app)
+import main
 
 
-def reset_database():
-    connection = sqlite3.connect(DATABASE_NAME)
-    cursor = connection.cursor()
-
-    cursor.execute("DELETE FROM tasks")
-
-    # AUTOINCREMENT keeps its own counter in sqlite_sequence and never reuses
-    # an id, even after DELETE. Reset it here so every test run starts the
-    # seeded tasks back at id 1 — otherwise ids keep climbing across runs.
-    cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'tasks'")
-
-    cursor.executemany(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        [
-            ("Learn FastAPI", 0),
-            ("Connect API to SQLite", 0),
-            ("Complete FlyRank assignment", 0),
-        ],
-    )
-    connection.commit()
-    connection.close()
+client = TestClient(main.app)
 
 
-@pytest.fixture(autouse=True)
-def clear_state():
-    reset_database()
-    yield
-    reset_database()
+def setup_function():
+    main.repository = MagicMock()
 
 
-def test_root():
+def test_home():
     response = client.get("/")
+
     assert response.status_code == 200
-    assert response.json()["database"] == "tasks.db"
+    assert response.json() == {
+        "message": "Task CRUD API is running",
+        "database": "PostgreSQL",
+    }
 
 
-def test_list_and_get_single_task():
+def test_get_tasks():
+    main.repository.get_all.return_value = [
+        {
+            "id": 1,
+            "title": "Learn Docker",
+            "done": False,
+        }
+    ]
+
     response = client.get("/tasks")
+
     assert response.status_code == 200
-    tasks = response.json()
-    assert len(tasks) == 3
-
-    # Don't hardcode an id — use the id the API actually gave the first task.
-    # This keeps the test correct no matter what the autoincrement counter
-    # happens to be at.
-    first_task_id = tasks[0]["id"]
-
-    single = client.get(f"/tasks/{first_task_id}")
-    assert single.status_code == 200
-    assert single.json()["id"] == first_task_id
-
-    missing = client.get("/tasks/999999")
-    assert missing.status_code == 404
-    assert missing.json() == {"error": "Task not found"}
+    assert response.json() == [
+        {
+            "id": 1,
+            "title": "Learn Docker",
+            "done": False,
+        }
+    ]
 
 
-def test_create_task_validation_and_creation():
-    created = client.post("/tasks", json={"title": "Buy milk"})
-    assert created.status_code == 201
-    assert created.json()["title"] == "Buy milk"
-    assert created.json()["done"] is False
+def test_get_task():
+    main.repository.get_by_id.return_value = {
+        "id": 1,
+        "title": "Learn Docker",
+        "done": False,
+    }
 
-    invalid_empty_body = client.post("/tasks", json={})
-    assert invalid_empty_body.status_code == 400
+    response = client.get("/tasks/1")
 
-    invalid_blank_title = client.post("/tasks", json={"title": "   "})
-    assert invalid_blank_title.status_code == 400
-
-    listing = client.get("/tasks")
-    assert len(listing.json()) == 4
+    assert response.status_code == 200
+    assert response.json()["id"] == 1
 
 
-def test_update_and_delete_task():
-    tasks = client.get("/tasks").json()
-    task_id = tasks[0]["id"]
+def test_get_unknown_task():
+    main.repository.get_by_id.return_value = None
 
-    updated = client.put(
-        f"/tasks/{task_id}",
-        json={"title": "Learn FastAPI", "done": True},
+    response = client.get("/tasks/999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "Task not found",
+    }
+
+
+def test_create_task():
+    main.repository.create.return_value = {
+        "id": 4,
+        "title": "Test PostgreSQL",
+        "done": False,
+    }
+
+    response = client.post(
+        "/tasks",
+        json={"title": "Test PostgreSQL"},
     )
-    assert updated.status_code == 200
-    assert updated.json()["done"] is True
 
-    invalid_update = client.put(
-        f"/tasks/{task_id}",
-        json={"title": "", "done": True},
+    assert response.status_code == 201
+    assert response.json() == {
+        "id": 4,
+        "title": "Test PostgreSQL",
+        "done": False,
+    }
+
+    main.repository.create.assert_called_once_with(
+        "Test PostgreSQL",
+        False,
     )
-    assert invalid_update.status_code == 400
 
-    deleted = client.delete(f"/tasks/{task_id}")
-    assert deleted.status_code == 204
-    assert deleted.content == b""
 
-    missing_delete = client.delete(f"/tasks/{task_id}")
-    assert missing_delete.status_code == 404
+def test_create_task_with_empty_title():
+    response = client.post(
+        "/tasks",
+        json={"title": "   "},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "Title is required",
+    }
+
+
+def test_update_task():
+    main.repository.update.return_value = {
+        "id": 1,
+        "title": "Updated task",
+        "done": True,
+    }
+
+    response = client.put(
+        "/tasks/1",
+        json={
+            "title": "Updated task",
+            "done": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": 1,
+        "title": "Updated task",
+        "done": True,
+    }
+
+
+def test_update_unknown_task():
+    main.repository.update.return_value = None
+
+    response = client.put(
+        "/tasks/999",
+        json={
+            "title": "Unknown task",
+            "done": False,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "Task not found",
+    }
+
+
+def test_delete_task():
+    main.repository.delete.return_value = True
+
+    response = client.delete("/tasks/1")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_delete_unknown_task():
+    main.repository.delete.return_value = False
+
+    response = client.delete("/tasks/999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "Task not found",
+    }
